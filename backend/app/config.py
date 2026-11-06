@@ -1,3 +1,4 @@
+import os
 from datetime import date
 from pathlib import Path
 
@@ -15,3 +16,23 @@ MIN_IMAGE_SIDE_PX = 600                        # reject thumbnails
 NAME_MATCH_MIN = 88                            # rapidfuzz score (0-100) to call two names "same"
 ADDRESS_MATCH_MIN = 92
 MAX_GSTIN_OCR_EDITS = 2                        # confusable substitutions tried before giving up
+
+
+# ---- Advisor LLM ----
+def _load_dotenv() -> None:
+    """Tiny .env reader (backend/.env, git-ignored). Real environment variables win."""
+    f = Path(__file__).resolve().parents[1] / ".env"
+    if not f.exists():
+        return
+    for line in f.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")     # check the name is current before the demo
+ADVISOR_LLM = os.getenv("ADVISOR_LLM", "on")                     # "off" forces the offline extractor
+LLM_TIMEOUT_SECONDS = 8.0

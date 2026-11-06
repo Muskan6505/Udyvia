@@ -50,3 +50,19 @@ def gstin_status(gstin: str | None) -> str:
         return "None"
     rec = gstin_registry().get(gstin.strip().upper())
     return rec["status"] if rec else "Unknown"
+
+
+@lru_cache(maxsize=1)
+def city_tiers() -> dict[str, int]:
+    """City -> tier, as seen in the leads data (22 cities)."""
+    out: dict[str, int] = {}
+    with open(DATA_DIR / "smb_leads.csv", newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            out.setdefault(r["city"], int(r["city_tier"]))
+    return out
+
+
+@lru_cache(maxsize=1)
+def business_types() -> list[str]:
+    with open(DATA_DIR / "smb_leads.csv", newline="", encoding="utf-8") as f:
+        return sorted({r["business_type"] for r in csv.DictReader(f)})
