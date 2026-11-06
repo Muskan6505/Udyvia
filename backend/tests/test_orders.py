@@ -130,3 +130,12 @@ def test_amount_due_is_first_month_plus_setup():
     assert o["amount_due"] == o["monthly_total"] + o["setup_total"]
     assert c.get(f"/orders/{o['order_id']}/tracker").json()["order_id"] == o["order_id"]
     assert c.get("/orders/ORD-NOPE").status_code == 404
+
+
+def test_demo_samples_served_and_restricted():
+    assert len(c.get("/demo/kyc-samples").json()) >= 6
+    r = c.get("/demo/kyc-samples/K02/gst_certificate")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert c.get("/demo/kyc-samples/K02/../../etc/passwd").status_code == 404
+    assert c.get("/demo/kyc-samples/K99/gst_certificate").status_code == 404
+    assert c.get("/demo/kyc-samples/K02/not_a_doc").status_code == 404

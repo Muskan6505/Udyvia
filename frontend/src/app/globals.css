@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { --ink: #1E2A78; --paper: #F5F6FB; }
+html { background: var(--paper); }
+body { font-family: Hind, "Noto Sans Devanagari", system-ui, sans-serif; color: #1B1F3B; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .font-display { font-family: "Bricolage Grotesque", Hind, system-ui, sans-serif; letter-spacing: -0.01em; }
+:lang(hi) h1, :lang(hi) h2, :lang(hi) h3 { letter-spacing: 0; }
+
+:focus-visible { outline: 3px solid #F2B705; outline-offset: 2px; border-radius: 6px; }
+
+/* the slip: paper with a perforated bottom edge */
+.slip {
+  position: relative; background: #fff;
+  -webkit-mask: radial-gradient(circle 7px at 10px 100%, #0000 98%, #000) -10px 0 / 20px 100% repeat-x;
+          mask: radial-gradient(circle 7px at 10px 100%, #0000 98%, #000) -10px 0 / 20px 100% repeat-x;
+}
+.ruled { background-image: repeating-linear-gradient(transparent 0 31px, rgba(30,42,120,.08) 31px 32px); }
+
+/* rubber stamp */
+.stamp { border: 3px solid currentColor; border-radius: 10px; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px currentColor;
+  mix-blend-mode: multiply; text-transform: none; }
+.stamp::after { content: ""; position: absolute; inset: 0; border-radius: 10px; opacity: .22; pointer-events: none;
+  background: radial-gradient(circle at 20% 30%, #fff 0 2px, transparent 3px), radial-gradient(circle at 70% 60%, #fff 0 1.5px, transparent 3px),
+              radial-gradient(circle at 45% 85%, #fff 0 2px, transparent 3px), radial-gradient(circle at 88% 20%, #fff 0 1.5px, transparent 3px); }
+
+.scanline { background: linear-gradient(to bottom, transparent, rgba(242,183,5,.55), transparent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

@@ -104,7 +104,7 @@ def esign(oid: str, body: EsignIn):
     if body.otp != DEMO_OTP:
         raise HTTPException(400, "That code didn't match. Please check the OTP and try again")
     o["signed_by"] = body.signatory_name.strip()
-    _step(o, "ESIGNED", template="ESIGNED", amount=o["amount_due"])
+    _step(o, "ESIGNED", template="ESIGNED", amount=f"{o['amount_due']:,}")
     return _public(o)
 
 
@@ -128,8 +128,8 @@ def pay(oid: str, body: PayIn):
                        if p["attempts"] >= MAX_PAYMENT_ATTEMPTS_BEFORE_HELP else "Nothing was charged. You can retry.")
         return out
     p["last_result"] = "success"
-    _step(o, "PAYMENT_RECEIVED", template="PAYMENT_RECEIVED", amount=o["amount_due"])
-    _step(o, "INSTALL_SCHEDULED", template="INSTALL_SCHEDULED", date=str(tracker.expected_dates(o)["INSTALLED"]))
+    _step(o, "PAYMENT_RECEIVED", template="PAYMENT_RECEIVED", amount=f"{o['amount_due']:,}")
+    _step(o, "INSTALL_SCHEDULED", template="INSTALL_SCHEDULED", date=tracker.expected_dates(o)["INSTALLED"].strftime("%d %b %Y"))
     return _public(o)
 
 

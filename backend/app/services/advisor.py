@@ -138,8 +138,8 @@ def handle(s: Session, message: str) -> dict:
         q = quote_router.get_quote(s.quote_id)
     out["quote"] = q.model_dump()
     out["quote_id"] = q.quote_id
-    tail = {"en": " Review the quote below. You can switch add-ons on or off.",
-            "hi": " नीचे कोटेशन देखें। आप ऐड-ऑन चालू या बंद कर सकते हैं।"}.get(s.lang, "")
+    tail = {"en": " Open your quote to review it and switch add-ons on or off.",
+            "hi": " कोटेशन खोलकर देखें और ऐड-ऑन चालू या बंद करें।"}.get(s.lang, "")
     if not known:
         tail += {"en": " (We don't have your city on file, so I used the standard-city catalogue.)",
                  "hi": " (आपका शहर हमारे रिकॉर्ड में नहीं है, इसलिए सामान्य कैटलॉग इस्तेमाल किया।)"}.get(s.lang, "")
