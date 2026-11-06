@@ -63,3 +63,13 @@ def test_withdraw_deletes_files():
     assert c.delete(f"/kyc/{sid}").json() == {"deleted": True}
     assert not d.exists()
     assert c.get(f"/kyc/{sid}/result").status_code == 404
+
+
+def test_verified_status_survives_later_reads_and_edits():
+    sid, _ = _run("K02")
+    qid = c.post("/quote", json=GATED_PROFILE).json()["quote_id"]
+    c.post(f"/quote/{qid}/apply-kyc", json={"kyc_session_id": sid})
+    g = c.get(f"/quote/{qid}").json()
+    assert g["gstin_status"] == "Active" and any(l["product_id"] == "P05" and l["included"] for l in g["lines"])
+    p = c.patch(f"/quote/{qid}/addons", json=dict(product_id="P20", included=True)).json()
+    assert p["gstin_status"] == "Active" and any(l["product_id"] == "P05" and l["included"] for l in p["lines"])
