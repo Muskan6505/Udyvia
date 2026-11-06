@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .privacy import logging_filter, policy, retention
-from .routers import advisor, demo, kyc, lookup, orders, privacy, quote
+from .routers import advisor, demo, kyc, lookup, orders, privacy, quote, voice
 from .services import data
 
 logging_filter.install()
@@ -34,6 +34,7 @@ app.include_router(kyc.router)
 app.include_router(orders.router)
 app.include_router(demo.router)
 app.include_router(privacy.router)
+app.include_router(voice.router)
 app.include_router(lookup.router)
 
 

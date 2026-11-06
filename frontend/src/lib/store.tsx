@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "./api";
 import { translate } from "./i18n";
 import type { Lang, Order, Quote, Slots, Step, KycResult, DocType } from "./types";
@@ -16,6 +16,7 @@ interface Store {
   setKycResult: (r: KycResult | null) => void; setKycDocs: (d: Partial<Record<DocType, string>>) => void; setKycSession: (s: string | null) => void;
   setQuote: (q: Quote) => void;
   order: Order | null; setOrder: (o: Order | null) => void;
+  voiceEnabled: boolean; voiceAuto: boolean; setVoiceAuto: (v: boolean) => void; playingId: number | null; speak: (id: number, text: string) => Promise<void>; stopSpeech: () => void;
   error: string | null; setError: (e: string | null) => void; guard: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
 }
 const Ctx = createContext<Store | null>(null);
@@ -41,6 +42,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [kycDocs, setKycDocs] = useState<Partial<Record<DocType, string>>>({});
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceAuto, setVoiceAuto] = useState(false);
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const autoRef = useRef(false);
+  autoRef.current = voiceAuto;
   const sid = useRef<string | undefined>(undefined);
   const mid = useRef(0);
   const t = useCallback((k: string, v?: Record<string, string | number>) => translate(lang, k, v), [lang]);
@@ -54,7 +61,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [lang]);
 
-  const push = (role: Msg["role"], text: string) => setMsgs((m) => [...m, { id: ++mid.current, role, text }]);
+  useEffect(() => { api.voiceStatus().then((v) => setVoiceEnabled(v.enabled)).catch(() => {}); }, []);
+
+  const stopSpeech = useCallback(() => {
+    const a = audio.current;
+    if (a) { a.pause(); if (a.src.startsWith("blob:")) URL.revokeObjectURL(a.src); audio.current = null; }
+    setPlayingId(null);
+  }, []);
+
+  const speak = useCallback(async (id: number, text: string) => {
+    stopSpeech();
+    setPlayingId(id);                                               // show the sound bars right away, while the audio loads
+    const clip = text.length > 600 ? text.slice(0, text.lastIndexOf(".", 600) + 1 || 600) : text;
+    const blob = await guard(() => api.speak(clip, lang));
+    if (!blob) { setPlayingId(null); return; }
+    const a = new Audio(URL.createObjectURL(blob));
+    audio.current = a;
+    a.onended = () => stopSpeech();
+    a.onerror = () => stopSpeech();
+    try { await a.play(); } catch { stopSpeech(); }                 // the browser may block autoplay until the person taps something
+  }, [lang, guard, stopSpeech]);
+
+  useEffect(() => { stopSpeech(); }, [lang, stopSpeech]);
+
+  const push = (role: Msg["role"], text: string) => {
+    const id = ++mid.current;
+    setMsgs((m) => [...m, { id, role, text }]);
+    if (role === "bot" && autoRef.current) setTimeout(() => speakRef.current?.(id, text), 0);
+  };
+  const speakRef = useRef<typeof speak | null>(null);
+  speakRef.current = speak;
 
   const apply = (r: Awaited<ReturnType<typeof api.advisor>>) => {
     sid.current = r.session_id;
@@ -91,15 +127,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const reset = useCallback(() => {
     if (kycSession) api.withdraw(kycSession).catch(() => {});
     sid.current = undefined;
-    setMsgs([]); setSlots(null); setReady(false); setQuote(null); setWhy(""); setKycSession(null); setKycResult(null);
+    stopSpeech(); setMsgs([]); setSlots(null); setReady(false); setQuote(null); setWhy(""); setKycSession(null); setKycResult(null);
     setKycDocs({}); setOrder(null); setError(null); setStep("welcome");
-  }, [kycSession]);
+  }, [kycSession, stopSpeech]);
 
   const value = useMemo<Store>(() => ({
     lang, setLang, t, step, go: setStep, reset, msgs, slots, ready, typing, basicMode, why, say, startChat,
     quote, setQuote, toggleAddon, quoteBusy, kycSession, setKycSession, kycResult, setKycResult, kycDocs, setKycDocs,
-    order, setOrder, error, setError, guard,
+    order, setOrder, error, setError, guard, voiceEnabled, voiceAuto, setVoiceAuto, playingId, speak, stopSpeech,
   }), [lang, t, step, reset, msgs, slots, ready, typing, basicMode, why, say, startChat, quote, toggleAddon, quoteBusy,
-       kycSession, kycResult, kycDocs, order, error, guard]);
+       kycSession, kycResult, kycDocs, order, error, guard, voiceEnabled, voiceAuto, playingId, speak, stopSpeech]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

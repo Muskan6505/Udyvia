@@ -47,5 +47,16 @@ export const api = {
     call<Order>("/orders", json("POST", { quote_id, kyc_session_id, language, contact_phone: contact_phone || null })),
   esign: (oid: string, signatory_name: string, otp: string) => call<Order>(`/orders/${oid}/esign`, json("POST", { signatory_name, otp })),
   pay: (oid: string, method: string, simulate_failure: boolean) => call<Order>(`/orders/${oid}/pay`, json("POST", { method, simulate_failure })),
+  voiceStatus: () => call<{ enabled: boolean }>("/voice/status"),
+  speak: async (text: string, language: Lang): Promise<Blob> => {
+    let r: Response;
+    try {
+      r = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, language }) });
+    } catch {
+      throw new ApiError("We can't reach the server. Check your connection and try again.");
+    }
+    if (!r.ok) throw new ApiError("Voice isn't available right now. You can still read the answer.");
+    return r.blob();
+  },
   advance: (oid: string) => call<Order>(`/orders/${oid}/advance`, json("POST")),
 };

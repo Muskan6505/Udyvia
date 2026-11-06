@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import { Btn } from "./ui";
+import { Speaker } from "./Speaker";
+import { Btn, Switch } from "./ui";
 
 const ORDER = ["business_type", "employees", "sites", "city", "has_gstin"] as const;
 
@@ -37,7 +38,7 @@ function Typing({ label }: { label: string }) {
 }
 
 export function Advisor() {
-  const { t, lang, msgs, slots, ready, typing, say, startChat, go, quote, basicMode } = useStore();
+  const { t, lang, msgs, slots, ready, typing, say, startChat, go, quote, basicMode, voiceEnabled, voiceAuto, setVoiceAuto, stopSpeech } = useStore();
   const [text, setText] = useState("");
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => { startChat(); }, [startChat]);
@@ -57,6 +58,12 @@ export function Advisor() {
         </div>
         <span className="text-sm font-semibold tabular-nums text-ink-soft">{done}/{ORDER.length}</span>
       </div>
+      {voiceEnabled && (
+        <div className="mb-3 flex items-center justify-end gap-3 text-sm font-medium text-ink-soft">
+          <span id="auto-voice">{t("voice.auto")}</span>
+          <Switch on={voiceAuto} onChange={(v) => { setVoiceAuto(v); if (!v) stopSpeech(); }} label={t("voice.auto")} />
+        </div>
+      )}
       {basicMode && msgs.length > 0 && <p className="mb-3 text-xs text-slate2">{t("advisor.fallback")}</p>}
 
       <div className="flex-1 space-y-3" aria-live="polite">
@@ -64,8 +71,11 @@ export function Advisor() {
           <motion.div key={m.id} initial={{ opacity: 0, y: 10, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 420, damping: 30 }}
             className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <p className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-3 text-[17px] leading-snug ${
-              m.role === "user" ? "rounded-br-sm bg-ink text-white" : "rounded-bl-sm bg-white shadow-sm"}`}>{m.text}</p>
+            <div className="max-w-[85%]">
+              <p className={`whitespace-pre-line rounded-2xl px-4 py-3 text-[17px] leading-snug ${
+                m.role === "user" ? "rounded-br-sm bg-ink text-white" : "rounded-bl-sm bg-white shadow-sm"}`}>{m.text}</p>
+              {m.role === "bot" && <Speaker id={m.id} text={m.text} />}
+            </div>
           </motion.div>
         ))}
         {typing && <div className="flex"><Typing label={t("advisor.typing")} /></div>}

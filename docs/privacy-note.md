@@ -23,6 +23,7 @@ We do not collect anything else. No account, no email, no location, no contacts.
 
 - **Documents never leave our server.** They are read with local OCR and checked against the registers. No document image or OCR text is sent to any AI service.
 - **The chat uses an AI model (Gemini)** only to turn free text into fields and to phrase the explanation. Before sending, GSTIN, Udyam, phone, email and 12-digit ID numbers are replaced with placeholders. A typed GSTIN is validated in our own code. Prices, eligibility and KYC decisions are always computed by our rules, never by the model.
+- **Voice (Azure AI Speech)** reads the advisor's replies aloud, only when the owner taps Listen or turns on read-aloud. It receives the reply text only, with identifiers replaced by placeholders. The owner's own messages and all documents stay out. We log only the length of each request.
 
 ## Masking and logs
 

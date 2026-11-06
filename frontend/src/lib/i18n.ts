@@ -87,6 +87,7 @@ const en: Dict = {
   "track.done": "Your services are live.",
   "track.failed": "Payment didn't go through",
   "err.generic": "That didn't work. Please try again.",
+  "voice.listen": "Listen", "voice.stop": "Stop", "voice.auto": "Read replies aloud",
   "dec.PASS": "Verified",
 };
 const hi: Dict = {
@@ -174,6 +175,7 @@ const hi: Dict = {
   "track.done": "आपकी सेवाएँ चालू हैं।",
   "track.failed": "भुगतान पूरा नहीं हुआ",
   "err.generic": "यह नहीं हो पाया। कृपया दोबारा कोशिश करें।",
+  "voice.listen": "सुनें", "voice.stop": "रोकें", "voice.auto": "जवाब बोलकर सुनाएँ",
 };
 const dicts: Record<Lang, Dict> = { en, hi };
 export function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {

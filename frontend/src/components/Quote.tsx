@@ -4,6 +4,7 @@ import { Lock } from "lucide-react";
 import { localize, unitLabel } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 import type { QuoteLine } from "@/lib/types";
+import { Speaker } from "./Speaker";
 import { Btn, CountUp, Switch, inr } from "./ui";
 
 function Line({ l, busy, onToggle, lang }: { l: QuoteLine; busy: boolean; onToggle: (on: boolean) => void; lang: "en" | "hi" }) {
@@ -50,6 +51,7 @@ export function QuoteScreen() {
         <div className="mt-6 border-l-4 border-haldi pl-4">
           <p className="text-sm font-semibold text-ink-soft">{t("quote.why")}</p>
           <p className="mt-1 text-[17px]">{why.split(/ (?:Open your quote|कोटेशन खोलकर)/)[0]}</p>
+          <Speaker id={-1} text={why.split(/ (?:Open your quote|कोटेशन खोलकर)/)[0]} />
         </div>
       )}
 

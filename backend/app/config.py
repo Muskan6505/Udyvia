@@ -36,3 +36,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")     # check the name is current before the demo
 ADVISOR_LLM = os.getenv("ADVISOR_LLM", "on")                     # "off" forces the offline extractor
 LLM_TIMEOUT_SECONDS = 8.0
+
+# ---- Text to speech (Azure AI Speech) ----
+AZURE_SPEECH_KEY = os.getenv("AZURE_SPEECH_KEY", "")
+AZURE_SPEECH_REGION = os.getenv("AZURE_SPEECH_REGION", "centralindia")     # the region your Speech resource was created in
+TTS_VOICES = {"en": os.getenv("TTS_VOICE_EN", "en-IN-NeerjaNeural"), "hi": os.getenv("TTS_VOICE_HI", "hi-IN-SwaraNeural")}
+TTS_MAX_CHARS = 600
