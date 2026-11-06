@@ -1,4 +1,4 @@
-# Udyam Digital
+# Udyvia
 
 Rules engine and quote API (first slice). LLM advisor, KYC, tracker and frontend come next.
 
