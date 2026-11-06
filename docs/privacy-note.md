@@ -33,7 +33,7 @@ We do not collect anything else. No account, no email, no location, no contacts.
 
 ## Safeguards
 
-Session and order ids are random and unguessable. Uploaded files sit in an owner-only folder, limited to PNG or JPEG under 8 MB, and stored under server-chosen names.
+Session and order ids are random and unguessable. Uploaded files sit in an owner-only folder (permission bits on Linux and macOS; the per-user temp folder on Windows), limited to PNG or JPEG under 8 MB, and stored under server-chosen names.
 
 ## Limits of this prototype, and what production needs
 

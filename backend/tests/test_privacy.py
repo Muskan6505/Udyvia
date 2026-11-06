@@ -5,6 +5,7 @@ import stat
 import time
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 
 from app.config import DATA_DIR
@@ -138,6 +139,7 @@ def test_chat_quotes_and_orders_expire_on_their_own_schedules():
     c.delete(f"/kyc/{sid}")
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows ignores POSIX permission bits; its per-user temp folder is private by ACL instead")
 def test_uploaded_files_are_owner_only():
     sid, _ = kyc("K03")
     d = kyc_router._SESSIONS[sid]["dir"]
