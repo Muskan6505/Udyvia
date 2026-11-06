@@ -5,6 +5,7 @@ import math
 import uuid
 
 from ..config import DEFAULT_PRICE_POSITION
+from ..privacy.masking import mask_gstin
 from ..schemas import Blocked, Profile, Quote, QuoteLine
 from . import data, eligibility as el
 from .pricing import line_totals
@@ -237,7 +238,9 @@ def assemble(p: Profile, selections: dict | None = None, quote_id: str | None = 
     inc = [l for l in lines if l.included]
     m, s = total(pos)
     q = Quote(
-        quote_id=quote_id or uuid.uuid4().hex[:10], segment=seg, profile=p, gstin_status=status, lines=lines,
+        quote_id=quote_id or uuid.uuid4().hex[:10], segment=seg,
+        profile=p.model_copy(update={"gstin": mask_gstin(p.gstin) if p.gstin else None}),   # never echo the raw number
+        gstin_status=status, lines=lines,
         monthly_total=m, setup_total=s,
         contract_months=max([cat[l.product_id].min_contract_months for l in inc], default=0),
         expected_install_days=max([cat[l.product_id].install_days for l in inc], default=0),

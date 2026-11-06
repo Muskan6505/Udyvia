@@ -94,6 +94,18 @@ export function Kyc() {
     if (q) { setQuote(q); go("sign"); }
   };
 
+  const withdraw = async () => {
+    if (!kycSession) return;
+    setBusy(true);
+    const ok = await guard(() => api.withdraw(kycSession));
+    setBusy(false);
+    if (ok) {
+      Object.values(docsRef.current).forEach((u) => u?.startsWith("blob:") && URL.revokeObjectURL(u));
+      setKycDocs({}); docsRef.current = {}; setKycResult(null); setKycSession(null);
+      go("consent");
+    }
+  };
+
   const flags = new Map<string, Finding>();
   kycResult?.findings.filter((f) => f.severity === "fix" && f.doc).forEach((f) => !flags.has(f.doc!) && flags.set(f.doc!, f));
   const uploaded = Object.keys(kycDocs).length;
@@ -156,6 +168,8 @@ export function Kyc() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <div className="mt-8"><Btn variant="quiet" disabled={busy || !kycSession} onClick={withdraw}>{t("kyc.withdraw")}</Btn></div>
 
       {samples.length > 0 && (
         <div className="mt-10 border-t-2 border-dashed border-ink/15 pt-5">

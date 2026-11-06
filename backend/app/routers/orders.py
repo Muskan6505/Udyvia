@@ -1,6 +1,7 @@
 """Orders: quote -> order -> e-sign (mock) -> payment (mock, with retry) -> install -> active."""
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Literal
 
@@ -8,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..config import TODAY
+from ..privacy import audit
 from ..services import data, notify, tracker
 from . import kyc, quote as quote_router
 
@@ -79,10 +81,11 @@ def create_order(body: OrderIn):
              items=[dict(product_id=l.product_id, product_name=l.product_name, qty=l.qty) for l in inc],
              monthly_total=q.monthly_total, setup_total=q.setup_total, contract_months=q.contract_months,
              amount_due=q.monthly_total + q.setup_total,       # first month in advance + one-time setup
-             done={}, signed_by=None, payment=dict(attempts=0, last_result=None, method=None))
+             done={}, signed_by=None, created=time.time(), payment=dict(attempts=0, last_result=None, method=None))
     o["done"]["QUOTE_ACCEPTED"] = TODAY
     _step(o, "KYC_VERIFIED", template="ORDER_CONFIRMED")
     _ORDERS[oid] = o
+    audit.log("order_created", oid, quote_id=body.quote_id, items=len(inc), phone_given=bool(o["phone_masked"]))
     return _public(o)
 
 
@@ -105,6 +108,7 @@ def esign(oid: str, body: EsignIn):
         raise HTTPException(400, "That code didn't match. Please check the OTP and try again")
     o["signed_by"] = body.signatory_name.strip()
     _step(o, "ESIGNED", template="ESIGNED", amount=f"{o['amount_due']:,}")
+    audit.log("agreement_signed", oid)         # the signatory's name is stored on the order, never in logs
     return _public(o)
 
 
@@ -119,6 +123,7 @@ def pay(oid: str, body: PayIn):
     p["attempts"] += 1
     p["method"] = body.method
     if body.simulate_failure:
+        audit.log("payment_failed", oid, attempt=p["attempts"], method=body.method)
         p["last_result"] = "failed"
         o["clock"] = o["clock"].fromordinal(o["clock"].toordinal() + 1)    # a failed attempt costs a day
         notify.send(o["notifications"], template="PAYMENT_FAILED", language=o["language"], on=str(o["clock"]),
@@ -128,6 +133,7 @@ def pay(oid: str, body: PayIn):
                        if p["attempts"] >= MAX_PAYMENT_ATTEMPTS_BEFORE_HELP else "Nothing was charged. You can retry.")
         return out
     p["last_result"] = "success"
+    audit.log("payment_received", oid, attempt=p["attempts"], method=body.method, amount=o["amount_due"])
     _step(o, "PAYMENT_RECEIVED", template="PAYMENT_RECEIVED", amount=f"{o['amount_due']:,}")
     _step(o, "INSTALL_SCHEDULED", template="INSTALL_SCHEDULED", date=tracker.expected_dates(o)["INSTALLED"].strftime("%d %b %Y"))
     return _public(o)

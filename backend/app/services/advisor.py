@@ -8,6 +8,10 @@ from __future__ import annotations
 import re
 import uuid
 
+import time
+
+from ..privacy import audit
+from ..privacy.masking import mask_gstin, scrub
 from . import llm, slots as sl
 from ..schemas import Profile
 
@@ -36,6 +40,8 @@ class Session:
         self.lang = lang
         self.quote_id: str | None = None
         self.source = "offline"
+        self.created = time.time()
+        audit.log("advisor_session_started", self.id, language=lang)
 
 
 _SESSIONS: dict[str, Session] = {}
@@ -49,11 +55,21 @@ def get_session(sid: str | None, lang: str) -> Session | None:
     return _SESSIONS.get(sid)
 
 
+def _public_slots(sl_: sl.Slots) -> dict:
+    d = sl_.model_dump()
+    if d.get("gstin"):
+        d["gstin"] = mask_gstin(d["gstin"])      # the browser never gets the raw number back
+    return d
+
+
 def _llm_extract(message: str, s: Session) -> dict | None:
     client = llm.get_llm()
     if client is None:
         return None
-    user = f'expecting: {s.expecting}\nowner_message: """{message}"""'
+    safe = scrub(message, "redact")          # identifiers never leave our servers: the model sees placeholders
+    if safe != message:
+        audit.log("llm_input_redacted", s.id)
+    user = f'expecting: {s.expecting}\nowner_message: """{safe}"""'
     try:
         return sl.sanitize(client.generate_json(EXTRACT_SYSTEM, user))
     except llm.LLMUnavailable:
@@ -117,7 +133,7 @@ def handle(s: Session, message: str) -> dict:
     changed = s.slots.model_dump() != before
     nxt = sl.next_slot(s.slots)
     s.expecting = nxt
-    out: dict = dict(session_id=s.id, slots=s.slots.model_dump(), missing=sl.missing(s.slots), ready=nxt is None,
+    out: dict = dict(session_id=s.id, slots=_public_slots(s.slots), missing=sl.missing(s.slots), ready=nxt is None,
                      source=s.source, quote=None)
     if nxt:
         reply = sl.question(nxt, s.lang)

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from ..schemas import AddonChange, Profile, Quote
 from ..services import data
+from ..privacy import audit
 from . import kyc
 from ..services import eligibility as el
 from ..services.recommender import assemble, default_qty, classify_seg
@@ -16,7 +19,7 @@ _STORE: dict[str, dict] = {}   # quote_id -> {profile, selections, position}
 @router.post("", response_model=Quote)
 def create_quote(profile: Profile):
     q, sel = assemble(profile)
-    _STORE[q.quote_id] = dict(profile=profile, selections=sel, position=q.price_position, gst=None, kyc=None)
+    _STORE[q.quote_id] = dict(profile=profile, selections=sel, position=q.price_position, gst=None, kyc=None, created=time.time())
     return q
 
 
@@ -74,6 +77,7 @@ def apply_kyc_result(quote_id: str, res) -> Quote | None:
     if st in ("Cancelled", "Suspended") or (st == "Active" and res.decision == "PASS"):
         s["gst"] = st
     s["kyc"] = res.decision
+    audit.log("quote_repriced_after_kyc", quote_id, decision=res.decision, gstin_status=s.get("gst"))
     q, sel = assemble(s["profile"], None, quote_id, s["position"], s["gst"], s["kyc"])
     s["selections"] = sel
     return q

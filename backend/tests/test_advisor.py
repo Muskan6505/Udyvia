@@ -69,7 +69,7 @@ def test_hindi_questions_and_replies():
 
 def test_typed_gstin_validated_locally():
     r = say("Textile unit in Surat, 80 employees, 1 unit, my gstin is 32TTNXB7384T1ZW")
-    assert r["slots"]["gstin"] == "32TTNXB7384T1ZW" and r["slots"]["has_gstin"] is True
+    assert r["slots"]["gstin"] == "32•••••••••T1ZW" and r["slots"]["has_gstin"] is True     # returned masked
     r = say("Textile unit in Surat, 80 employees, 1 unit, gst 32TTNXB7384T1ZX")
     assert r["slots"]["gstin"] is None and "doesn't look valid" in r["reply"]
 
