@@ -28,7 +28,7 @@ function SampleSlip() {
 }
 
 export function Welcome() {
-  const { t, lang, setLang, go } = useStore();
+  const { t, lang, setLang, go, user, hasProgress, resume, reset } = useStore();
   const points = ["welcome.p1", "welcome.p2", "welcome.p3", "welcome.p4"];
   return (
     <section className="grid min-h-[calc(100vh-70px)] items-center gap-12 py-10 lg:grid-cols-[1.1fr_0.9fr]">
@@ -44,7 +44,14 @@ export function Welcome() {
             </button>
           ))}
         </div>
-        <Btn className="mt-6 text-lg" onClick={() => go("advisor")} icon={<ArrowRight className="h-5 w-5 order-last" aria-hidden />}>{t("welcome.start")}</Btn>
+        {user && <p className="mt-6 font-display text-xl font-bold text-ink">{t("welcome.back", { name: user.name.split(" ")[0] })}</p>}
+        <div className="mt-4 flex flex-wrap gap-3">
+          {!user && <Btn className="text-lg" onClick={() => go("auth")} icon={<ArrowRight className="h-5 w-5 order-last" aria-hidden />}>{t("welcome.start")}</Btn>}
+          {user && hasProgress && <Btn className="text-lg" onClick={resume} icon={<ArrowRight className="h-5 w-5 order-last" aria-hidden />}>{t("welcome.continue")}</Btn>}
+          {user && hasProgress && <Btn variant="ghost" onClick={() => { reset(); setTimeout(() => go("advisor"), 0); }}>{t("welcome.new")}</Btn>}
+          {user && !hasProgress && <Btn className="text-lg" onClick={resume} icon={<ArrowRight className="h-5 w-5 order-last" aria-hidden />}>{t("welcome.start")}</Btn>}
+          {!user && <Btn variant="ghost" onClick={() => go("auth")}>{t("welcome.signin")}</Btn>}
+        </div>
         <ul className="mt-10 grid max-w-lg gap-2 text-slate2 sm:grid-cols-2">
           {points.map((p) => <li key={p} className="flex items-start gap-2"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-haldi" aria-hidden />{t(p)}</li>)}
         </ul>

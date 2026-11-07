@@ -1,5 +1,5 @@
 export type Lang = "en" | "hi";
-export type Step = "welcome" | "advisor" | "quote" | "consent" | "kyc" | "sign" | "track";
+export type Step = "welcome" | "auth" | "advisor" | "quote" | "consent" | "kyc" | "sign" | "track";
 
 export interface Slots {
   business_type: string | null; employees: number | null; sites: number | null; city: string | null;
@@ -29,3 +29,22 @@ export interface Order {
 }
 export const DOC_TYPES = ["gst_certificate", "udyam_certificate", "signatory_id", "address_proof"] as const;
 export type DocType = (typeof DOC_TYPES)[number];
+
+export interface User { id: number; name: string; email: string; phone: string; role: "customer" | "backoffice"; contact_consent: boolean }
+export interface Resume {
+  stage: string; lang: Lang; step: Step; fresh: boolean; session_id: string | null; slots: Slots | null; quote: Quote | null; quote_id: string | null;
+  order: Order | null; kyc_session_id: string | null; kyc_result: KycResult | null; reply: string | null; note: string | null;
+}
+export interface Factor { feature: string; value: string; effect: number; direction: "up" | "down" }
+export interface Lead {
+  id: number; name: string; phone: string; email: string; demo: boolean; business: string | null; city: string | null; employees: number | null;
+  sites: number | null; segment: string | null; stage: string; stage_text: string; kyc_decision: string | null; monthly_total: number | null;
+  idle_minutes: number; probability: number; band: "Hot" | "Warm" | "Cold"; factors: Factor[]; expected_value: number;
+  blockers: { code: string; text: string; action: string }[]; next_action: string;
+  follow_up_status: "new" | "called" | "callback" | "not_interested"; follow_up_note: string; followed_up_at: number | null;
+}
+export interface OfficeData {
+  leads: Lead[];
+  summary: { open: number; hot: number; warm: number; cold: number; opted_out: number; expected_monthly_value: number };
+  model: { trained_on: string; train_leads: number; test_leads: number; note: string; by_stage: Record<string, { n: number; activation_rate: number; auc: number }> };
+}

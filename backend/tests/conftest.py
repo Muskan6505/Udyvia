@@ -14,6 +14,15 @@ def no_live_llm(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def db_to_tmp(monkeypatch, tmp_path):
+    """Each test gets a fresh database file."""
+    from app import auth, db
+    monkeypatch.setenv("UDYVIA_DB", str(tmp_path / "test.db"))
+    auth._FAILS.clear()
+    db.init()
+
+
+@pytest.fixture(autouse=True)
 def audit_to_tmp(monkeypatch, tmp_path):
     """Each test gets its own audit log, so tests never write into the repo."""
     from app.privacy import audit

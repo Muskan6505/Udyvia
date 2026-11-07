@@ -11,6 +11,7 @@ import uuid
 import time
 
 from ..privacy import audit
+from . import journey
 from ..privacy.masking import mask_gstin, scrub
 from . import llm, slots as sl
 from ..schemas import Profile
@@ -41,6 +42,7 @@ class Session:
         self.quote_id: str | None = None
         self.source = "offline"
         self.created = time.time()
+        self.user_id: int | None = None
         audit.log("advisor_session_started", self.id, language=lang)
 
 
@@ -53,6 +55,28 @@ def get_session(sid: str | None, lang: str) -> Session | None:
         _SESSIONS[s.id] = s
         return s
     return _SESSIONS.get(sid)
+
+
+def restore(slots: dict, lang: str, user_id: int) -> Session:
+    """Rebuilds an advisor session from slots saved in the database (the chat text itself is never stored)."""
+    s = Session(lang)
+    s.slots = sl.Slots(**{**slots, "gstin": None})
+    s.expecting = sl.next_slot(s.slots)
+    s.user_id = user_id
+    _SESSIONS[s.id] = s
+    return s
+
+
+def _save(s: Session, q=None) -> None:
+    """Writes progress against the signed-in account. The GSTIN is never saved here; it is re-checked at KYC."""
+    if not s.user_id:
+        return
+    from ..routers import quote as quote_router
+    journey.update(s.user_id, "advisor", slots={**s.slots.model_dump(), "gstin": None}, lang=s.lang)
+    if q is not None:
+        st = quote_router._STORE[q.quote_id]
+        st["user_id"] = s.user_id
+        journey.from_quote(s.user_id, q, st["selections"], st["position"])
 
 
 def _public_slots(sl_: sl.Slots) -> dict:
@@ -136,6 +160,7 @@ def handle(s: Session, message: str) -> dict:
     out: dict = dict(session_id=s.id, slots=_public_slots(s.slots), missing=sl.missing(s.slots), ready=nxt is None,
                      source=s.source, quote=None)
     if nxt:
+        _save(s)
         reply = sl.question(nxt, s.lang)
         if not changed and message:
             reply = {"en": "Sorry, I didn't catch that. ", "hi": "माफ़ कीजिए, मैं समझ नहीं पाया। "}.get(s.lang, "") + reply
@@ -154,6 +179,7 @@ def handle(s: Session, message: str) -> dict:
         q = quote_router.get_quote(s.quote_id)
     out["quote"] = q.model_dump()
     out["quote_id"] = q.quote_id
+    _save(s, q)
     tail = {"en": " Open your quote to review it and switch add-ons on or off.",
             "hi": " कोटेशन खोलकर देखें और ऐड-ऑन चालू या बंद करें।"}.get(s.lang, "")
     if not known:

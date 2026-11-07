@@ -7,10 +7,12 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from .. import auth
 from ..privacy import audit, policy
+from ..services import journey
 from ..services.kyc_decision import run_kyc
 from ..services.ocr import DOC_TYPES
 
@@ -85,7 +87,7 @@ def consent_notice():
 
 
 @router.post("/consent")
-def give_consent(body: ConsentIn):
+def give_consent(body: ConsentIn, user: dict | None = Depends(auth.optional_user)):
     if not body.accepted:
         raise HTTPException(400, "Consent is required before uploading documents")
     _purge_expired()
@@ -93,7 +95,10 @@ def give_consent(body: ConsentIn):
     d = _ROOT / sid
     _ROOT.mkdir(parents=True, exist_ok=True, mode=0o700)
     d.mkdir(parents=True, exist_ok=True, mode=0o700)
-    _SESSIONS[sid] = dict(dir=d, files={}, result=None, consented_at=time.time(), expires=time.time() + RETENTION_SECONDS)
+    _SESSIONS[sid] = dict(dir=d, files={}, result=None, consented_at=time.time(), expires=time.time() + RETENTION_SECONDS,
+                         user_id=user["id"] if user else None)
+    if user:
+        journey.update(user["id"], "kyc", kyc_session_id=sid)
     audit.log("consent_given", sid, purpose="kyc", retention_hours=policy.KYC_HOURS)
     return {"kyc_session_id": sid, "retention_hours": RETENTION_SECONDS // 3600}
 
@@ -128,6 +133,8 @@ def validate(sid: str, body: ValidateIn | None = None):
     res = run_kyc({t: s["files"].get(t) for t in DOC_TYPES}, declared_gstin=body.declared_gstin,
                   udyam_waived=body.udyam_waived)
     s["result"] = res
+    if s.get("user_id"):
+        journey.update(s["user_id"], "kyc", kyc_decision=res.decision)
     audit.log("kyc_decided", sid, decision=res.decision, codes=sorted(res.codes()))
     return res.to_dict()
 

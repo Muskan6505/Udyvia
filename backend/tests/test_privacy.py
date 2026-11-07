@@ -186,3 +186,14 @@ def test_fresh_folder_is_not_swept_mid_creation():
     assert fresh.exists()
     kyc_router.sweep_orphans(min_age_seconds=0)
     assert not fresh.exists()
+
+
+def test_log_filter_keeps_uvicorn_access_records_formattable():
+    """uvicorn's access formatter unpacks five arguments; the scrubber must not empty them (it once did)."""
+    import logging
+    from uvicorn.logging import AccessFormatter
+    rec = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d',
+                            ("127.0.0.1:1234", "GET", "/kyc/27AAPFU0939F1ZV", "1.1", 200), None)
+    ScrubFilter().filter(rec)
+    line = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s').format(rec)
+    assert "27AAPFU0939F1ZV" not in line and "200" in line

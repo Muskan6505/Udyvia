@@ -21,9 +21,18 @@ const json = (method: string, body?: unknown): RequestInit => ({
   method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body),
 });
 
-import type { AdvisorReply, KycResult, Lang, Order, Quote } from "./types";
+import type { AdvisorReply, KycResult, Lang, OfficeData, Order, Quote, Resume, User } from "./types";
 
 export const api = {
+  me: () => call<User>("/auth/me"),
+  register: (b: { name: string; email: string; phone: string; password: string; contact_consent: boolean }) => call<User>("/auth/register", json("POST", b)),
+  login: (email: string, password: string) => call<User>("/auth/login", json("POST", { email, password })),
+  logout: () => call<{ ok: boolean }>("/auth/logout", json("POST")),
+  deleteAccount: () => call<{ deleted: boolean }>("/auth/account", { method: "DELETE" }),
+  resume: () => call<Resume>("/me/resume", json("POST")),
+  restart: () => call<{ ok: boolean }>("/me/restart", json("POST")),
+  officeLeads: (q: string) => call<OfficeData>(`/backoffice/leads${q}`),
+  followUp: (id: number, status: string, note: string) => call(`/backoffice/leads/${id}/follow-up`, json("PATCH", { status, note })),
   advisor: (message: string, language: Lang, session_id?: string) =>
     call<AdvisorReply>("/advisor/message", json("POST", { message, language, session_id: session_id ?? null })),
   patchAddon: (qid: string, product_id: string, included: boolean) =>

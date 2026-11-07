@@ -20,15 +20,15 @@ export function Logo() {
   );
 }
 
-export function Shell({ children }: { children: React.ReactNode }) {
-  const { step, t, lang, setLang, reset, error, setError } = useStore();
+export function Shell({ children }: { children: (step: Step) => React.ReactNode }) {
+  const { step, t, lang, setLang, reset, error, setError, user, signOut, deleteAccount, notice } = useStore();
   const idx = NAV.findIndex((n) => n.step.includes(step));
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
       <header className="sticky top-0 z-20 border-b border-ink/10 bg-paper/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <Logo />
-          {step !== "welcome" && (
+          {step !== "welcome" && step !== "auth" && (
             <ol className="hidden items-center gap-1 md:flex" aria-label="Progress">
               {NAV.map((n, i) => (
                 <li key={n.key} aria-current={i === idx ? "step" : undefined}
@@ -47,22 +47,36 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </button>
               ))}
             </div>
-            {step !== "welcome" && <Btn variant="quiet" onClick={reset}>{t("reset")}</Btn>}
+            {step !== "welcome" && step !== "auth" && <Btn variant="quiet" onClick={reset}>{t("reset")}</Btn>}
+            {user && (
+              <details className="relative">
+                <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full bg-ink font-display font-bold text-white" aria-label={user.name} title={user.name}>
+                  {user.name.trim()[0]?.toUpperCase()}
+                </summary>
+                <div className="absolute right-0 z-30 mt-2 w-56 rounded-xl border border-ink/10 bg-white p-2 shadow-slip">
+                  <p className="truncate px-3 py-1 text-sm font-semibold text-ink">{user.name}</p>
+                  <p className="truncate px-3 pb-2 text-xs text-slate2">{user.email}</p>
+                  <button onClick={signOut} className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold hover:bg-ink-wash">{t("me.signout")}</button>
+                  <button onClick={deleteAccount} className="w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-chilli hover:bg-chilli-wash">{t("me.delete")}</button>
+                </div>
+              </details>
+            )}
           </div>
         </div>
       </header>
-      <main className={`mx-auto max-w-6xl px-4 sm:px-6 ${step === "welcome" ? "" : "grid gap-10 py-8 lg:grid-cols-[minmax(0,1fr)_340px]"}`}>
+      <main className={`mx-auto max-w-6xl px-4 sm:px-6 ${step === "welcome" || step === "auth" ? "" : "grid gap-10 py-8 lg:grid-cols-[minmax(0,1fr)_340px]"}`}>
         <div className="min-w-0">
           <ErrorNote msg={error} onClose={() => setError(null)} />
+          {notice && <p role="status" className="mb-4 rounded-xl border-2 border-haldi/50 bg-haldi-wash px-4 py-3 text-sm text-ink">{notice}</p>}
           <AnimatePresence mode="wait">
             <motion.div key={step} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-              {children}
+              {children(step)}
             </motion.div>
           </AnimatePresence>
         </div>
-        {step !== "welcome" && <Slip />}
+        {step !== "welcome" && step !== "auth" && <Slip />}
       </main>
-      {step !== "welcome" && <MobileSlip />}
+      {step !== "welcome" && step !== "auth" && <MobileSlip />}
     </div>
   );
 }

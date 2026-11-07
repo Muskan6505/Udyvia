@@ -10,7 +10,8 @@ def purge_all(now: float | None = None) -> dict[str, int]:
     from ..routers import kyc, orders, quote
     from ..services import advisor
     now = time.time() if now is None else now
-    counts = {"kyc_sessions": 0, "advisor_sessions": 0, "quotes": 0, "orders": 0, "orphaned_upload_folders": 0}
+    counts = {"kyc_sessions": 0, "advisor_sessions": 0, "quotes": 0, "orders": 0, "orphaned_upload_folders": 0,
+              "sign_in_sessions": 0, "stale_journeys": 0, "saved_orders": 0}
 
     for sid in [k for k, v in kyc._SESSIONS.items() if v["expires"] < now]:
         kyc._purge(sid)
@@ -25,6 +26,16 @@ def purge_all(now: float | None = None) -> dict[str, int]:
     for oid in [k for k, v in orders._ORDERS.items() if now - v.get("created", now) > policy.ORDER_DAYS * 86400]:
         del orders._ORDERS[oid]
         counts["orders"] += 1
+    from .. import db
+    from ..services import journey
+    with db.connect() as c:
+        counts["sign_in_sessions"] = c.execute("DELETE FROM sessions WHERE expires<?", (now,)).rowcount
+        counts["saved_orders"] = c.execute("DELETE FROM orders WHERE updated<?", (now - policy.ORDER_DAYS * 86400,)).rowcount
+        stale = [r["user_id"] for r in c.execute("SELECT user_id FROM journeys WHERE closed=0 AND updated<?",
+                                                (now - policy.LEAD_DAYS * 86400,))]
+    for uid in stale:                       # keeps the account, drops the saved answers and quote
+        journey.reset(uid)
+    counts["stale_journeys"] = len(stale)
     if any(counts.values()):
         audit.log("retention_purge", **counts)
     return counts

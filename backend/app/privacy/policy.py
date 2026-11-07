@@ -4,6 +4,8 @@ KYC_HOURS = 24            # uploaded document images, OCR results and the KYC de
 ADVISOR_HOURS = 24        # chat slots (may include a GSTIN the owner typed)
 QUOTE_HOURS = 72          # quotes that never became an order
 ORDER_DAYS = 30           # demo orders; a real deployment keeps contracts for the legal period instead
+LEAD_DAYS = 90            # saved progress of an account that has been inactive and never became a customer
+SESSION_DAYS = 7          # sign-in sessions
 PURGE_INTERVAL_SECONDS = 600
 
 THIRD_PARTIES = [

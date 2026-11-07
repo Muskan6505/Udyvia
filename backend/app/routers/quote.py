@@ -8,12 +8,22 @@ from pydantic import BaseModel
 from ..schemas import AddonChange, Profile, Quote
 from ..services import data
 from ..privacy import audit
+from ..services import journey
 from . import kyc
 from ..services import eligibility as el
 from ..services.recommender import assemble, default_qty, classify_seg
 
 router = APIRouter(prefix="/quote", tags=["quote"])
 _STORE: dict[str, dict] = {}   # quote_id -> {profile, selections, position}
+
+
+def _persist(quote_id: str, q: Quote) -> None:
+    """If this quote belongs to a signed-in account, save its current state to that account's journey."""
+    s = _STORE.get(quote_id)
+    if s and s.get("user_id"):
+        journey.from_quote(s["user_id"], q, s["selections"], s["position"], stage="quote")
+        if s.get("kyc"):
+            journey.update(s["user_id"], kyc_decision=s["kyc"])
 
 
 @router.post("", response_model=Quote)
@@ -63,6 +73,7 @@ def change_addon(quote_id: str, change: AddonChange):
     if change.included and change.product_id not in new_sel:
         q.notes.append("That product can't be added to this bundle; see 'blocked'.")
     s["selections"] = new_sel
+    _persist(quote_id, q)
     return q
 
 
@@ -80,6 +91,7 @@ def apply_kyc_result(quote_id: str, res) -> Quote | None:
     audit.log("quote_repriced_after_kyc", quote_id, decision=res.decision, gstin_status=s.get("gst"))
     q, sel = assemble(s["profile"], None, quote_id, s["position"], s["gst"], s["kyc"])
     s["selections"] = sel
+    _persist(quote_id, q)
     return q
 
 

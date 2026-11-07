@@ -9,8 +9,15 @@ from .masking import scrub
 class ScrubFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
-            record.msg = scrub(record.getMessage())
-            record.args = ()
+            # Scrub the template and every argument but keep the record's shape: uvicorn's access formatter
+            # unpacks exactly five arguments, so emptying them would break its log lines.
+            if isinstance(record.msg, str):
+                record.msg = scrub(record.msg)
+            a = record.args
+            if isinstance(a, tuple):
+                record.args = tuple(scrub(x) if isinstance(x, str) else x for x in a)
+            elif isinstance(a, dict):
+                record.args = {k: scrub(v) if isinstance(v, str) else v for k, v in a.items()}
         except Exception:      # never let log scrubbing break a request
             pass
         return True

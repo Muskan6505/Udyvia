@@ -89,6 +89,16 @@ const en: Dict = {
   "err.generic": "That didn't work. Please try again.",
   "voice.listen": "Listen", "voice.stop": "Stop", "voice.auto": "Read replies aloud",
   "dec.PASS": "Verified",
+  "auth.title.in": "Welcome back", "auth.title.up": "Create your account",
+  "auth.sub": "Your answers are saved to your account, so you can leave and pick up exactly where you stopped.",
+  "auth.tab.in": "Sign in", "auth.tab.up": "Create account",
+  "auth.name": "Your name", "auth.email": "Email", "auth.phone": "Mobile number", "auth.password": "Password (8+ characters)",
+  "auth.consent": "It's OK for Airtel to call me about my application. (You can change this any time.)",
+  "auth.submit.in": "Sign in", "auth.submit.up": "Create account and start",
+  "auth.privacy": "We store your name, contact details and the answers you give. Document photos are never kept in your account.",
+  "welcome.back": "Welcome back, {name}", "welcome.continue": "Continue where I left off", "welcome.new": "Start a new quote",
+  "welcome.signin": "Sign in", "me.signout": "Sign out", "me.delete": "Delete my account", "me.deleteConfirm": "This permanently deletes your account, answers, quote and order. Continue?",
+  "resume.back": "Welcome back, {name}! I've kept your answers.", "resume.kycExpired": "For your privacy we delete uploaded documents after 24 hours, so please upload them again.",
 };
 const hi: Dict = {
   "welcome.title": "आपका बिज़नेस, अगले हफ़्ते तक ऑनलाइन।",
@@ -176,6 +186,16 @@ const hi: Dict = {
   "track.failed": "भुगतान पूरा नहीं हुआ",
   "err.generic": "यह नहीं हो पाया। कृपया दोबारा कोशिश करें।",
   "voice.listen": "सुनें", "voice.stop": "रोकें", "voice.auto": "जवाब बोलकर सुनाएँ",
+  "auth.title.in": "वापसी पर स्वागत है", "auth.title.up": "अपना अकाउंट बनाएँ",
+  "auth.sub": "आपके जवाब आपके अकाउंट में सेव रहते हैं, इसलिए आप जहाँ रुके थे वहीं से दोबारा शुरू कर सकते हैं।",
+  "auth.tab.in": "साइन इन", "auth.tab.up": "अकाउंट बनाएँ",
+  "auth.name": "आपका नाम", "auth.email": "ईमेल", "auth.phone": "मोबाइल नंबर", "auth.password": "पासवर्ड (8+ अक्षर)",
+  "auth.consent": "एयरटेल मुझे मेरे आवेदन के बारे में कॉल कर सकता है। (आप इसे कभी भी बदल सकते हैं।)",
+  "auth.submit.in": "साइन इन", "auth.submit.up": "अकाउंट बनाएँ और शुरू करें",
+  "auth.privacy": "हम आपका नाम, संपर्क विवरण और आपके जवाब सेव करते हैं। दस्तावेज़ों की फ़ोटो आपके अकाउंट में कभी नहीं रखी जातीं।",
+  "welcome.back": "वापसी पर स्वागत है, {name}", "welcome.continue": "जहाँ छोड़ा था वहीं से जारी रखें", "welcome.new": "नया कोटेशन शुरू करें",
+  "welcome.signin": "साइन इन", "me.signout": "साइन आउट", "me.delete": "मेरा अकाउंट हटाएँ", "me.deleteConfirm": "इससे आपका अकाउंट, जवाब, कोटेशन और ऑर्डर हमेशा के लिए हट जाएँगे। जारी रखें?",
+  "resume.back": "वापसी पर स्वागत है, {name}! आपके जवाब सुरक्षित हैं।", "resume.kycExpired": "आपकी गोपनीयता के लिए हम अपलोड किए दस्तावेज़ 24 घंटे बाद हटा देते हैं, इसलिए कृपया उन्हें दोबारा अपलोड करें।",
 };
 const dicts: Record<Lang, Dict> = { en, hi };
 export function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {

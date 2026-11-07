@@ -5,12 +5,13 @@ import time
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from .. import auth
 from ..config import TODAY
 from ..privacy import audit
-from ..services import data, notify, tracker
+from ..services import data, journey, notify, tracker
 from . import kyc, quote as quote_router
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -37,11 +38,38 @@ class PayIn(BaseModel):
     simulate_failure: bool = False      # demo switch for the "first payment failed" path
 
 
-def _get(oid: str) -> dict:
+def get_owned(oid: str, user: dict | None) -> dict | None:
+    """The order, from memory or the database. An order that belongs to an account is visible only to that account."""
     o = _ORDERS.get(oid)
+    if o is None:
+        loaded = journey.load_order(oid)
+        if loaded:
+            o, uid = loaded
+            o["user_id"] = uid
+            _ORDERS[oid] = o
+    if o is None:
+        return None
+    if o.get("user_id") and (not user or user["id"] != o["user_id"]):
+        return None
+    return o
+
+
+def _get(oid: str, user: dict | None = None) -> dict:
+    o = get_owned(oid, user)
     if not o:
         raise HTTPException(404, "order not found")
     return o
+
+
+def _save(o: dict) -> None:
+    """Write-through to the database for orders that belong to an account, and keep the journey current."""
+    uid = o.get("user_id")
+    if not uid:
+        return
+    journey.save_order(uid, o)
+    won = "PAYMENT_RECEIVED" in o["done"]
+    journey.update(uid, "track" if won else "sign", order_id=o["order_id"], closed=int(won),
+                   payment_failures=o["payment"]["attempts"] - (1 if o["payment"]["last_result"] == "success" else 0))
 
 
 def _step(o: dict, code: str, **notif) -> None:
@@ -60,7 +88,7 @@ def _public(o: dict) -> dict:
 
 
 @router.post("", status_code=201)
-def create_order(body: OrderIn):
+def create_order(body: OrderIn, user: dict | None = Depends(auth.optional_user)):
     qs = quote_router._STORE.get(body.quote_id)
     if not qs:
         raise HTTPException(404, "quote not found")
@@ -84,37 +112,41 @@ def create_order(body: OrderIn):
              done={}, signed_by=None, created=time.time(), payment=dict(attempts=0, last_result=None, method=None))
     o["done"]["QUOTE_ACCEPTED"] = TODAY
     _step(o, "KYC_VERIFIED", template="ORDER_CONFIRMED")
+    if user:
+        o["user_id"] = user["id"]
     _ORDERS[oid] = o
+    _save(o)
     audit.log("order_created", oid, quote_id=body.quote_id, items=len(inc), phone_given=bool(o["phone_masked"]))
     return _public(o)
 
 
 @router.get("/{oid}")
-def get_order(oid: str):
-    return _public(_get(oid))
+def get_order(oid: str, user: dict | None = Depends(auth.optional_user)):
+    return _public(_get(oid, user))
 
 
 @router.get("/{oid}/tracker")
-def get_tracker(oid: str):
-    return tracker.timeline(_get(oid))
+def get_tracker(oid: str, user: dict | None = Depends(auth.optional_user)):
+    return tracker.timeline(_get(oid, user))
 
 
 @router.post("/{oid}/esign")
-def esign(oid: str, body: EsignIn):
-    o = _get(oid)
+def esign(oid: str, body: EsignIn, user: dict | None = Depends(auth.optional_user)):
+    o = _get(oid, user)
     if "ESIGNED" in o["done"]:
         raise HTTPException(409, "already signed")
     if body.otp != DEMO_OTP:
         raise HTTPException(400, "That code didn't match. Please check the OTP and try again")
     o["signed_by"] = body.signatory_name.strip()
     _step(o, "ESIGNED", template="ESIGNED", amount=f"{o['amount_due']:,}")
+    _save(o)
     audit.log("agreement_signed", oid)         # the signatory's name is stored on the order, never in logs
     return _public(o)
 
 
 @router.post("/{oid}/pay")
-def pay(oid: str, body: PayIn):
-    o = _get(oid)
+def pay(oid: str, body: PayIn, user: dict | None = Depends(auth.optional_user)):
+    o = _get(oid, user)
     if "ESIGNED" not in o["done"]:
         raise HTTPException(409, "please sign the agreement first")
     if "PAYMENT_RECEIVED" in o["done"]:
@@ -128,6 +160,7 @@ def pay(oid: str, body: PayIn):
         o["clock"] = o["clock"].fromordinal(o["clock"].toordinal() + 1)    # a failed attempt costs a day
         notify.send(o["notifications"], template="PAYMENT_FAILED", language=o["language"], on=str(o["clock"]),
                     phone_masked=o["phone_masked"], oid=oid)
+        _save(o)
         out = _public(o)
         out["help"] = ("Still stuck? Try another payment method or ask us to call you."
                        if p["attempts"] >= MAX_PAYMENT_ATTEMPTS_BEFORE_HELP else "Nothing was charged. You can retry.")
@@ -136,13 +169,14 @@ def pay(oid: str, body: PayIn):
     audit.log("payment_received", oid, attempt=p["attempts"], method=body.method, amount=o["amount_due"])
     _step(o, "PAYMENT_RECEIVED", template="PAYMENT_RECEIVED", amount=f"{o['amount_due']:,}")
     _step(o, "INSTALL_SCHEDULED", template="INSTALL_SCHEDULED", date=tracker.expected_dates(o)["INSTALLED"].strftime("%d %b %Y"))
+    _save(o)
     return _public(o)
 
 
 @router.post("/{oid}/advance")
-def advance(oid: str):
+def advance(oid: str, user: dict | None = Depends(auth.optional_user)):
     """DEMO ONLY: moves the simulated clock to the next milestone (install done, then active)."""
-    o = _get(oid)
+    o = _get(oid, user)
     if "INSTALL_SCHEDULED" not in o["done"]:
         raise HTTPException(409, "installation hasn't been scheduled yet (sign and pay first)")
     exp = tracker.expected_dates(o)
@@ -154,4 +188,5 @@ def advance(oid: str):
         _step(o, "ACTIVATED", template="ACTIVATED")
     else:
         raise HTTPException(409, "already active")
+    _save(o)
     return _public(o)
